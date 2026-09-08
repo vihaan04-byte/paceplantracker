@@ -91,7 +91,7 @@ tracker-app/
 
 ## Deployment
 
-**Live:** https://github.com/your-username/tracker-app → GitHub Pages auto-deploys from `main` branch. Share the GitHub Pages URL with friends.
+**Live:** https://github.com/vihaan04-byte/paceplantracker → GitHub Pages auto-deploys from `main` branch. Share the GitHub Pages URL with friends.
 
 **Dev testing:** Same repo, flip `ENV = 'dev'` in supabase-client.js, commit/push. Your dev instance runs on same GitHub Pages URL but talks to dev Supabase project.
 
