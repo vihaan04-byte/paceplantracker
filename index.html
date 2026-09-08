@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vihaan — Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="page">
+
+  <div id="authScreen">
+    <div class="top">
+      <div class="top-label">KWS Tracker</div>
+      <h1>Log <em>in</em></h1>
+      <div class="subtitle">Sign up the first time, then just log in after that.</div>
+    </div>
+    <details class="setup" open>
+      <summary>Account</summary>
+      <label>Email</label>
+      <input type="text" id="authEmail" placeholder="you@example.com">
+      <label>Password</label>
+      <input type="password" id="authPassword" placeholder="••••••••">
+      <div class="subtitle" style="margin:10px 0 0;">First time here? Hit <strong>Sign up</strong>. Already have an account? Hit <strong>Log in</strong>.</div>
+      <button class="gen-btn" id="loginBtn">Log in</button>
+      <button class="gen-btn" id="signupBtn" style="margin-left:8px; background:transparent; border:1px solid var(--primary); color:var(--primary);">Sign up</button>
+      <div class="gen-status" id="authError" style="color:var(--warn);"></div>
+    </details>
+  </div>
+
+  <div id="appContent" style="display:none;">
+
+  <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:0.5rem;">
+    <span class="subtitle" style="margin:0;" id="userEmail"></span>
+    <button class="add-btn" id="whatsNewBtn">📣 What's new</button>
+    <button class="add-btn" id="logoutBtn">Log out</button>
+  </div>
+
+  <div class="top">
+    <div class="top-label" id="top-label">KWS Tracker</div>
+    <span class="custom-tag" style="color:var(--warn);border-color:var(--warn);">BETA · v1</span>
+    <h1 id="page-title">Your <em>tracker</em></h1>
+    <div class="subtitle" id="page-subtitle">Upload a pace plan below to get started.</div>
+  </div>
+
+  <details class="setup" id="setup" open>
+    <summary>🚀 Setup — generate a month from your pace plan</summary>
+
+    <label>Upload paceplan (.xlsx)</label>
+    <input type="file" id="fileInput" accept=".xlsx">
+
+    <label>Which sheets (courses)?</label>
+    <div class="gen-status" style="color:var(--warn); margin-top:6px;">⚠ Don't generate self-paced courses like Seminar, or any course you don't recognize — uncheck those below.</div>
+    <div id="sheetChecks" style="margin-top:6px; font-size:12px; color:var(--muted);">Upload a file first</div>
+
+    <label>Month</label>
+    <select id="monthSelect">
+      <option>January</option><option>February</option><option>March</option><option>April</option>
+      <option>May</option><option>June</option><option>July</option><option>August</option>
+      <option>September</option><option>October</option><option>November</option><option>December</option>
+    </select>
+
+    <button class="gen-btn" id="genBtn" disabled>Generate this month</button>
+    <button class="gen-btn" id="resetBtn" style="margin-left:8px; background:transparent; border:1px solid var(--warn); color:var(--warn);">Reset all local data</button>
+    <div class="gen-status" id="genStatus"></div>
+  </details>
+
+  <div id="failBanner" style="display:none;"></div>
+
+  <div id="statsWrap" style="display:none;">
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="pfill" style="width:0%"></div></div>
+      <div class="progress-pct" id="ppct">0%</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="stat-num" id="s-done">0</span><span class="stat-label">done</span></div>
+      <div class="stat"><span class="stat-num" id="s-left">0</span><span class="stat-label">left</span></div>
+      <div class="stat"><span class="stat-num" id="s-total">0</span><span class="stat-label">total</span></div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div id="plan"><div class="empty-state">No plan generated yet.</div></div>
+
+  <div id="announceModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:100;">
+    <div style="background:var(--surface); border-radius:var(--radius); padding:24px; max-width:400px; box-shadow:var(--shadow);">
+      <div id="announceTitle" style="font-family:var(--font-display); font-weight:700; font-size:1.2rem; margin-bottom:10px;"></div>
+      <div id="announceBody" style="font-size:13px; color:var(--text); line-height:1.6; white-space:pre-line;"></div>
+      <button class="gen-btn" id="announceCloseBtn" style="margin-top:16px;">Got it</button>
+    </div>
+  </div>
+
+  </div>
+
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/announcements.js"></script>
+<script src="js/tracker.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
