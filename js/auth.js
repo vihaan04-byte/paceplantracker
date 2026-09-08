@@ -15,6 +15,7 @@ async function showApp(session) {
   appBooted = true;
   await pullFromSupabase();
   reloadStateFromLocalStorage();
+  await loadThemeFromSupabase();
   await bootTracker();
   checkAnnouncements();
 }

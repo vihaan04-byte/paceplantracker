@@ -21,7 +21,7 @@ A zero-budget school pace-plan tracker for KWS students. Upload your xlsx pace p
 ## How It Works
 
 1. **User logs in** → Supabase auth (email/password, no email confirmation).
-2. **Upload xlsx** → SheetJS reads it client-side into raw rows.
+2. **Upload xlsx** → SheetJS reads it client-side into raw rows. (If the pace plan lives in Google Sheets, the setup panel shows steps for exporting it as .xlsx first.)
 3. **Pick sheets & month** → Groq API (via Edge Function) parses rows into structured week/task JSON.
 4. **Generate plan** → Saved to Supabase (`user_data` table) + uploaded xlsx stored in private bucket.
 5. **Check off tasks** → Synced to Supabase instantly (localStorage is fast cache, Supabase is source of truth).
@@ -29,6 +29,8 @@ A zero-budget school pace-plan tracker for KWS students. Upload your xlsx pace p
 
 ## Key Architecture Details
 
+- **Theming:** 3 built-in themes (default/mint/lavender), each its own accent color, switchable via a dropdown in the header. Themes are plain CSS variables scoped under `[data-theme="..."]` blocks in `style.css`, with `theme.js` handling the switch, localStorage caching (avoids a flash of the wrong theme on load — applied via an inline script in `<head>`, before first paint), and Supabase sync so the choice follows a user across devices. Structural tokens (radius, fonts) live once on `:root`; only color tokens are per-theme — adding a future theme (e.g. dark mode) is just a new `[data-theme="..."]` block plus a new `<option>` in the dropdown, no JS changes needed.
+- **Responsive layout:** Below ~1000px width, the setup panel/stats and the week list stack in a single column. At ≥1000px, once a plan has been generated, the layout switches to a sticky sidebar (setup + stats) alongside a scrolling main column (the week list) so wide screens are put to use. Before a plan exists (first-time setup), the layout instead centers the setup panel as a focused ~640px-wide card rather than spreading it thin across the full page width.
 - **Dev/prod split:** `supabase-client.js` has `const ENV = 'dev'` or `'prod'` — flip one line to switch. Dev data is isolated, safe for testing.
 - **RLS (Row Level Security):** Every table has Supabase policies so users can only see/edit their own data — enforced at DB level, not UI.
 - **Forward-fill dates:** Some xlsx sheets (ELA 9b) have blank week numbers on continuation rows. Parser forward-fills the date column so those rows don't get dropped by month filter.
@@ -41,11 +43,12 @@ A zero-budget school pace-plan tracker for KWS students. Upload your xlsx pace p
 ```
 tracker-app/
 ├── index.html                 # Markup only
-├── style.css                  # All styling, CSS vars for theming
+├── style.css                  # All styling, CSS vars scoped per theme, responsive layout rules
 ├── js/
 │   ├── supabase-client.js     # Supabase connection + dev/prod toggle
 │   ├── auth.js                # Login/signup screen + session mgmt
 │   ├── sync.js                # Supabase read/write + Storage file ops
+│   ├── theme.js                # Theme switching, localStorage cache, Supabase sync
 │   ├── tracker.js             # Rendering, state mgmt, UI interactions
 │   ├── parser.js              # SheetJS + Groq parsing
 │   ├── announcements.js       # What's-new popup, last-seen tracking
@@ -61,15 +64,17 @@ tracker-app/
 
 **Token limits hit fast:** Parsing 4-6 courses in quick succession can exceed Groq's 8000 TPM free limit. Use retry logic + space out parses. For beta, users are small enough this rarely happens.
 
-**localStorage + Supabase pattern:** Keep localStorage as a fast local cache; Supabase is the source of truth. On login, pull Supabase → reload state in memory → render. Saves network round-trips for every click while staying synced across devices.
+**localStorage + Supabase pattern:** Keep localStorage as a fast local cache; Supabase is the source of truth. On login, pull Supabase → reload state in memory → render. Saves network round-trips for every click while staying synced across devices. The same pattern is reused for theme preference.
 
 **Auth event duplication:** `getSession()` + `onAuthStateChange()` both fire on page load, causing functions to run twice if not guarded.
 
 **Date normalization:** Different sheets format dates slightly differently (extra spaces, dash spacing). Normalize before using as merge key, or you get duplicate weeks.
 
+**Theming via CSS variables:** Keeping all color tokens as CSS variables from the start (rather than hardcoded hex values scattered through the stylesheet) made adding a theme switcher trivial later — just wrap the variable block in `[data-theme="..."]` selectors instead of touching every rule that uses color.
+
 ## Supabase Schema
 
-- **user_data:** `(user_id, key, value, updated_at)` with RLS. Stores all app state as key/value pairs (tasks, progress, plan cache, etc).
+- **user_data:** `(user_id, key, value, updated_at)` with RLS. Stores all app state as key/value pairs (tasks, progress, plan cache, theme preference, etc).
 - **announcements:** `(id, title, body, created_at)` with RLS. Admin adds rows via Table Editor dashboard; app fetches latest on login.
 - **Storage/paceplans:** Private bucket. Users' uploaded xlsx files stored at `user_id/paceplan.xlsx`, RLS policies lock each user to their own.
 
@@ -79,13 +84,14 @@ tracker-app/
 - **Switch to dev:** Change `const ENV = 'dev'` in `supabase-client.js`, commit, push. GitHub Pages auto-deploys.
 - **Groq rate limit hit:** Wait 60 seconds or batch parses across multiple minutes. For recurring, upgrade Groq account.
 - **Reset a user's data:** Table Editor → user_data → delete rows where `user_id` matches theirs (get UUID from Supabase Auth tab).
+- **Add a new theme:** Add a `[data-theme="yourname"]` block in `style.css` with the same variable names as the existing themes, then add a matching `<option value="yourname">` to `#themeSelect` in `index.html`. No JS changes needed — `theme.js` reads theme names generically.
 
 ## Future Roadmap (Beyond v1)
 
 - Drag-to-reorder tasks/weeks.
 - Adaptive rescheduling: detect overdue tasks, intelligently push remaining work to future weeks.
 - Configurable course end dates ("move Bio from May to Jan").
-- Dark mode (all CSS vars already in place).
+- Dark mode (structure is already in place — see "Add a new theme" above).
 - Mascot.
 - Full UI for admins to manage announcements/users (not yet built; Table Editor is current admin panel).
 

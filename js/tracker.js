@@ -107,6 +107,9 @@ function applyPlan(combined) {
   document.getElementById('page-subtitle').textContent = Object.values(COURSES).map(c => c.name).join(' · ');
   document.getElementById('statsWrap').style.display = '';
   document.getElementById('setup').open = false;
+  // Switch on the sidebar layout now that there's a plan to show alongside the setup
+  // panel — on first-time setup (no plan yet) the panel stays full-width instead.
+  document.getElementById('layoutWrap').classList.add('has-plan');
 
   const failBanner = document.getElementById('failBanner');
   if (built.failedCourses.length) {

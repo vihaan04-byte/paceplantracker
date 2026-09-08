@@ -6,6 +6,16 @@
 <title>Vihaan — Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script>
+  // Applied synchronously, before CSS/paint, so there's no flash of the wrong theme
+  // on load. The real (possibly Supabase-synced) value is confirmed later in theme.js.
+  (function() {
+    try {
+      var t = localStorage.getItem('vihaan_tracker_theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  })();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -35,6 +45,11 @@
 
   <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:0.5rem;">
     <span class="subtitle" style="margin:0;" id="userEmail"></span>
+    <select id="themeSelect" class="add-btn" style="cursor:pointer;">
+      <option value="default">🎨 Default</option>
+      <option value="mint">🌿 Mint</option>
+      <option value="lavender">🪻 Lavender</option>
+    </select>
     <button class="add-btn" id="whatsNewBtn">📣 What's new</button>
     <button class="add-btn" id="logoutBtn">Log out</button>
   </div>
@@ -46,49 +61,61 @@
     <div class="subtitle" id="page-subtitle">Upload a pace plan below to get started.</div>
   </div>
 
-  <details class="setup" id="setup" open>
-    <summary>🚀 Setup — generate a month from your pace plan</summary>
+  <div class="layout" id="layoutWrap">
+    <div class="layout-side">
+      <details class="setup" id="setup" open>
+        <summary>🚀 Setup — generate a month from your pace plan</summary>
 
-    <label>Upload paceplan (.xlsx)</label>
-    <input type="file" id="fileInput" accept=".xlsx">
+        <label>Upload paceplan (.xlsx)</label>
+        <div class="setup-help">
+          <strong>Don't have an .xlsx file?</strong> If your pace plan is a Google Sheet:
+          1) Open it in Google Sheets → 2) <strong>File → Download → Microsoft Excel (.xlsx)</strong> →
+          3) Upload the downloaded file below.
+          <br><a href="https://support.google.com/docs/answer/49114?hl=en&co=GENIE.Platform%3DDesktop" target="_blank" rel="noopener">Need help? See Google's export guide →</a>
+        </div>
+        <input type="file" id="fileInput" accept=".xlsx">
 
-    <label>Which sheets (courses)?</label>
-    <div class="gen-status" style="color:var(--warn); margin-top:6px;">⚠ Don't generate self-paced courses like Seminar, or any course you don't recognize — uncheck those below.</div>
-    <div id="sheetChecks" style="margin-top:6px; font-size:12px; color:var(--muted);">Upload a file first</div>
+        <label>Which sheets (courses)?</label>
+        <div class="gen-status" style="color:var(--warn); margin-top:6px;">⚠ Don't generate self-paced courses like Seminar, or any course you don't recognize — uncheck those below.</div>
+        <div id="sheetChecks" style="margin-top:6px; font-size:13px; color:var(--muted);">Upload a file first</div>
 
-    <label>Month</label>
-    <select id="monthSelect">
-      <option>January</option><option>February</option><option>March</option><option>April</option>
-      <option>May</option><option>June</option><option>July</option><option>August</option>
-      <option>September</option><option>October</option><option>November</option><option>December</option>
-    </select>
+        <label>Month</label>
+        <select id="monthSelect">
+          <option>January</option><option>February</option><option>March</option><option>April</option>
+          <option>May</option><option>June</option><option>July</option><option>August</option>
+          <option>September</option><option>October</option><option>November</option><option>December</option>
+        </select>
 
-    <button class="gen-btn" id="genBtn" disabled>Generate this month</button>
-    <button class="gen-btn" id="resetBtn" style="margin-left:8px; background:transparent; border:1px solid var(--warn); color:var(--warn);">Reset all local data</button>
-    <div class="gen-status" id="genStatus"></div>
-  </details>
+        <button class="gen-btn" id="genBtn" disabled>Generate this month</button>
+        <button class="gen-btn" id="resetBtn" style="margin-left:8px; background:transparent; border:1px solid var(--warn); color:var(--warn);">Reset all local data</button>
+        <div class="gen-status" id="genStatus"></div>
+      </details>
 
-  <div id="failBanner" style="display:none;"></div>
+      <div id="failBanner" style="display:none;"></div>
 
-  <div id="statsWrap" style="display:none;">
-    <div class="progress-row">
-      <div class="progress-track"><div class="progress-fill" id="pfill" style="width:0%"></div></div>
-      <div class="progress-pct" id="ppct">0%</div>
+      <div id="statsWrap" style="display:none;">
+        <div class="progress-row">
+          <div class="progress-track"><div class="progress-fill" id="pfill" style="width:0%"></div></div>
+          <div class="progress-pct" id="ppct">0%</div>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="stat-num" id="s-done">0</span><span class="stat-label">done</span></div>
+          <div class="stat"><span class="stat-num" id="s-left">0</span><span class="stat-label">left</span></div>
+          <div class="stat"><span class="stat-num" id="s-total">0</span><span class="stat-label">total</span></div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
     </div>
-    <div class="stats">
-      <div class="stat"><span class="stat-num" id="s-done">0</span><span class="stat-label">done</span></div>
-      <div class="stat"><span class="stat-num" id="s-left">0</span><span class="stat-label">left</span></div>
-      <div class="stat"><span class="stat-num" id="s-total">0</span><span class="stat-label">total</span></div>
+
+    <div class="layout-main">
+      <div id="plan"><div class="empty-state">No plan generated yet.</div></div>
     </div>
-    <div class="legend" id="legend"></div>
   </div>
-
-  <div id="plan"><div class="empty-state">No plan generated yet.</div></div>
 
   <div id="announceModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:100;">
     <div style="background:var(--surface); border-radius:var(--radius); padding:24px; max-width:400px; box-shadow:var(--shadow);">
       <div id="announceTitle" style="font-family:var(--font-display); font-weight:700; font-size:1.2rem; margin-bottom:10px;"></div>
-      <div id="announceBody" style="font-size:13px; color:var(--text); line-height:1.6; white-space:pre-line;"></div>
+      <div id="announceBody" style="font-size:14px; color:var(--text); line-height:1.6; white-space:pre-line;"></div>
       <button class="gen-btn" id="announceCloseBtn" style="margin-top:16px;">Got it</button>
     </div>
   </div>
@@ -99,6 +126,7 @@
 
 <script src="js/supabase-client.js"></script>
 <script src="js/sync.js"></script>
+<script src="js/theme.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/announcements.js"></script>
 <script src="js/tracker.js"></script>

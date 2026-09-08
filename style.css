@@ -1,6 +1,17 @@
-/* All colors/fonts live here as variables — swap these to re-theme the whole app later
-   (e.g. a per-user theme picker, dark mode, or school-branded palettes). */
+/* All colors/fonts live here as variables, scoped per theme via [data-theme="..."]
+   on <html>. Structural tokens (radius, fonts, shadow shape) live once on :root since
+   they don't change per theme. Each theme block only overrides color tokens — this
+   makes adding a future dark mode (or more palettes) just a matter of adding another
+   [data-theme="..."] block below with the same variable names. */
 :root {
+  --radius: 16px;
+  --radius-sm: 10px;
+  --font-display: 'Baloo 2', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+/* Theme: Default (warm cream/beige, original palette) */
+:root, [data-theme="default"] {
   --bg: #FDF9F3;
   --surface: #FFFFFF;
   --surface2: #F5F0E8;
@@ -14,14 +25,48 @@
   --warn-bg: rgba(255,107,107,0.12);
   --done: #2EC4B6;
   --done-bg: rgba(46,196,182,0.10);
-  --radius: 16px;
-  --radius-sm: 10px;
-  --font-display: 'Baloo 2', sans-serif;
-  --font-body: 'Inter', sans-serif;
   --shadow: 0 2px 10px rgba(43,38,32,0.05);
 }
 
+/* Theme: Mint (cool seafoam, teal accent) */
+[data-theme="mint"] {
+  --bg: #E8F5F3;
+  --surface: #FFFFFF;
+  --surface2: #DCF0EC;
+  --border: rgba(15,70,63,0.10);
+  --border2: rgba(15,70,63,0.16);
+  --text: #16302C;
+  --muted: #6B8A84;
+  --primary: #2EC4B6;
+  --primary-bg: rgba(46,196,182,0.14);
+  --warn: #FF6B6B;
+  --warn-bg: rgba(255,107,107,0.12);
+  --done: #2EC4B6;
+  --done-bg: rgba(46,196,182,0.10);
+  --shadow: 0 2px 10px rgba(15,70,63,0.07);
+}
+
+/* Theme: Lavender (cool violet, purple accent) */
+[data-theme="lavender"] {
+  --bg: #EFEBF9;
+  --surface: #FFFFFF;
+  --surface2: #E4DDF5;
+  --border: rgba(50,30,90,0.10);
+  --border2: rgba(50,30,90,0.16);
+  --text: #2A2140;
+  --muted: #8579A3;
+  --primary: #8B6FE0;
+  --primary-bg: rgba(139,111,224,0.14);
+  --warn: #FF6B6B;
+  --warn-bg: rgba(255,107,107,0.12);
+  --done: #8B6FE0;
+  --done-bg: rgba(139,111,224,0.10);
+  --shadow: 0 2px 10px rgba(50,30,90,0.07);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 17px; } /* base bump: 16px -> 17px, scales all rem-based sizing */
 
 body {
   background: var(--bg);
@@ -31,23 +76,62 @@ body {
   padding: 0;
 }
 
-.page { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+/* Fluid width: full-bleed with padding on small screens, and on large screens the
+   layout below switches to a real sidebar + main-content grid so extra space gets
+   used for a second column rather than just stretching one column of text. */
+.page { width: 100%; max-width: 1600px; margin: 0 auto; padding: 3rem clamp(1.25rem, 4vw, 3rem) 6rem; }
+
+/* Single column by default (mobile/tablet): setup panel and stats sit above the plan. */
+.layout { display: flex; flex-direction: column; gap: 0; }
+.layout-side { display: flex; flex-direction: column; }
+.layout-main { min-width: 0; } /* min-width: 0 lets grid/flex children shrink instead of overflowing */
+
+/* Wide screens: sidebar (setup + stats) pinned left, plan list fills the rest and
+   scrolls independently once it's taller than the viewport, so both columns make
+   use of the vertical space instead of one long single column.
+   This only kicks in once a plan exists (.has-plan) — on first-time setup, before
+   there's anything to show next to it, the setup panel stays full-width so it isn't
+   squeezed into a narrow sidebar. */
+@media (min-width: 1000px) {
+  .layout.has-plan { display: grid; grid-template-columns: minmax(320px, 380px) 1fr; align-items: start; gap: 2.5rem; }
+  .layout.has-plan .layout-side { position: sticky; top: 1.5rem; max-height: calc(100vh - 3rem); overflow-y: auto; padding-right: 4px; }
+  .layout.has-plan .layout-side::-webkit-scrollbar { width: 6px; }
+  .layout.has-plan .layout-side::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+  /* Before a plan exists: full-width setup panel, roomy enough for the file input,
+     sheet checkboxes, and month picker to sit comfortably rather than cramped. */
+  .layout:not(.has-plan) { display: block; }
+  .layout:not(.has-plan) .setup { max-width: 640px; margin: 0 auto; }
+  .layout:not(.has-plan) #failBanner,
+  .layout:not(.has-plan) #statsWrap { max-width: 640px; margin-left: auto; margin-right: auto; }
+}
+
+/* On the first-time setup screen (no plan yet), center everything as a focused
+   onboarding card instead of spreading it across the full page width. */
+@media (min-width: 1000px) {
+  body:has(.layout:not(.has-plan)) .top { max-width: 640px; margin-left: auto; margin-right: auto; text-align: center; }
+}
+
+/* Very wide screens: give the sidebar a bit more room once a plan exists, so the
+   week list gets more breathing room too. */
+@media (min-width: 1400px) {
+  .layout.has-plan { grid-template-columns: 420px 1fr; gap: 3.5rem; }
+}
 
 .top { margin-bottom: 2rem; }
 
 .top-label {
-  font-size: 12px; color: var(--primary); letter-spacing: 0.06em;
+  font-size: 13px; color: var(--primary); letter-spacing: 0.06em;
   text-transform: uppercase; margin-bottom: 0.35rem; font-weight: 700;
 }
 
 h1 {
-  font-family: var(--font-display); font-weight: 700; font-size: 2.3rem;
+  font-family: var(--font-display); font-weight: 700; font-size: 2.5rem;
   color: var(--text); line-height: 1.15; margin-bottom: 0.3rem;
 }
 
 h1 em { font-style: normal; color: var(--primary); }
 
-.subtitle { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; }
+.subtitle { font-size: 14px; color: var(--muted); margin-bottom: 1.5rem; }
 
 /* --- Setup panel --- */
 details.setup {
@@ -56,42 +140,50 @@ details.setup {
   box-shadow: var(--shadow);
 }
 details.setup summary {
-  cursor: pointer; font-size: 13px; color: var(--text); font-weight: 600;
+  cursor: pointer; font-size: 14px; color: var(--text); font-weight: 600;
   font-family: var(--font-display);
 }
 .setup label {
-  display: block; margin-top: 14px; font-size: 12px; color: var(--muted); font-weight: 600;
+  display: block; margin-top: 14px; font-size: 13px; color: var(--muted); font-weight: 600;
 }
 .setup input[type="password"], .setup input[type="file"], .setup select {
   width: 100%; margin-top: 6px; padding: 10px 12px; font-family: var(--font-body);
-  font-size: 13px; background: var(--surface2); border: 1px solid var(--border2);
+  font-size: 14px; background: var(--surface2); border: 1px solid var(--border2);
   border-radius: var(--radius-sm); color: var(--text);
 }
+.setup-help {
+  font-size: 12.5px; color: var(--muted); margin-top: 8px; line-height: 1.6;
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.setup-help strong { color: var(--text); }
+.setup-help a { color: var(--primary); font-weight: 600; text-decoration: none; }
+.setup-help a:hover { text-decoration: underline; }
 .sheet-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .sheet-row input { width: auto; margin: 0; accent-color: var(--primary); }
-.sheet-row label { margin: 0; font-size: 13px; color: var(--text); font-weight: 400; }
+.sheet-row label { margin: 0; font-size: 14px; color: var(--text); font-weight: 400; }
 .gen-btn {
   margin-top: 16px; padding: 10px 18px; background: var(--primary);
   border: none; color: #ffffff; border-radius: 99px;
-  font-family: var(--font-body); font-weight: 600; font-size: 13px; cursor: pointer;
+  font-family: var(--font-body); font-weight: 600; font-size: 14px; cursor: pointer;
   transition: transform 0.1s, opacity 0.1s;
 }
 .gen-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 .gen-btn:disabled { background: var(--border2); color: var(--muted); cursor: not-allowed; transform: none; }
-.gen-status { margin-top: 10px; font-size: 12px; color: var(--muted); white-space: pre-line; }
+.gen-status { margin-top: 10px; font-size: 13px; color: var(--muted); white-space: pre-line; }
 
 .progress-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
 .progress-track { flex: 1; height: 8px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
 .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #4FC3B0); border-radius: 99px; transition: width 0.4s cubic-bezier(0.4,0,0.2,1); }
-.progress-pct { font-size: 13px; color: var(--text); font-weight: 700; min-width: 36px; text-align: right; }
+.progress-pct { font-size: 14px; color: var(--text); font-weight: 700; min-width: 40px; text-align: right; }
 
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.5rem; }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center; box-shadow: var(--shadow); }
-.stat-num { font-family: var(--font-display); font-weight: 700; font-size: 1.9rem; color: var(--text); line-height: 1; display: block; }
-.stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; font-weight: 600; }
+.stat-num { font-family: var(--font-display); font-weight: 700; font-size: 2.2rem; color: var(--text); line-height: 1; display: block; }
+.stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; font-weight: 600; }
 
 .legend { display: flex; gap: 1.1rem; margin-bottom: 2rem; flex-wrap: wrap; }
-.leg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.leg { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 500; }
 .leg-dot { width: 9px; height: 9px; border-radius: 50%; }
 
 .week-block { margin-bottom: 10px; }
@@ -103,42 +195,54 @@ details.setup summary {
 }
 .week-header:hover { border-color: var(--primary); transform: translateY(-1px); }
 .week-header.all-done { background: var(--done-bg); border-color: rgba(46,196,182,0.3); }
-.week-date { font-size: 12px; color: var(--muted); font-weight: 600; min-width: 150px; }
-.week-title { font-size: 13px; color: var(--text); flex: 1; }
-.week-count { font-size: 12px; color: var(--muted); font-weight: 600; }
+.week-date { font-size: 13px; color: var(--muted); font-weight: 600; min-width: 150px; }
+.week-title { font-size: 14px; color: var(--text); flex: 1; }
+.week-count { font-size: 13px; color: var(--muted); font-weight: 600; }
 .pill {
-  font-size: 10px; padding: 3px 10px; border-radius: 99px; font-weight: 700;
+  font-size: 11px; padding: 3px 10px; border-radius: 99px; font-weight: 700;
   background: var(--warn-bg); color: var(--warn);
   border: 1px solid rgba(255,107,107,0.25); letter-spacing: 0.03em;
 }
-.chevron { font-size: 11px; color: var(--muted); transition: transform 0.2s; }
+.chevron { font-size: 12px; color: var(--muted); transition: transform 0.2s; }
 .week-header.collapsed .chevron { transform: rotate(-90deg); }
 .week-body { padding: 12px 0 4px 4px; display: flex; flex-direction: column; gap: 18px; }
 .week-body.hidden { display: none; }
 .course-group { display: flex; flex-direction: column; gap: 3px; }
-.course-label { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; padding: 2px 10px 6px 10px; }
+.course-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: 0.02em; padding: 2px 10px 6px 10px; }
 .course-dot { width: 8px; height: 8px; border-radius: 50%; }
-.course-count { color: var(--muted); font-size: 11px; font-weight: 500; margin-left: auto; }
+.course-count { color: var(--muted); font-size: 12px; font-weight: 500; margin-left: auto; }
 .task { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-radius: var(--radius-sm); border: 1px solid transparent; transition: background 0.12s, border-color 0.12s; }
 .task:hover { background: var(--surface2); border-color: var(--border); }
 .task:hover .del-btn { opacity: 1; }
 .task.done { opacity: 0.5; }
 .task.done .task-text { text-decoration: line-through; color: var(--muted); }
-.checkbox { width: 18px; height: 18px; border-radius: 6px; border: 2px solid var(--border2); flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; background: transparent; cursor: pointer; }
+.checkbox { width: 19px; height: 19px; border-radius: 6px; border: 2px solid var(--border2); flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; background: transparent; cursor: pointer; }
 .task.done .checkbox { background: var(--done); border-color: var(--done); }
 .check-icon { width: 9px; height: 9px; display: none; }
 .task.done .check-icon { display: block; }
-.task-text { font-size: 13px; color: var(--text); line-height: 1.5; flex: 1; cursor: pointer; }
-.del-btn { opacity: 0; flex-shrink: 0; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 4px; transition: opacity 0.12s, color 0.12s; }
+.task-text { font-size: 15px; color: var(--text); line-height: 1.55; flex: 1; cursor: pointer; }
+.del-btn { opacity: 0; flex-shrink: 0; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 2px 4px; transition: opacity 0.12s, color 0.12s; }
 .del-btn:hover { color: var(--warn); }
-.empty-note { font-size: 12px; color: var(--muted); padding: 4px 12px 8px; font-style: italic; }
+.empty-note { font-size: 13px; color: var(--muted); padding: 4px 12px 8px; font-style: italic; }
 .add-row { display: flex; align-items: center; gap: 8px; padding: 4px 12px 2px; }
-.add-input { flex: 1; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 8px 12px; font-family: var(--font-body); font-size: 13px; color: var(--text); outline: none; }
+.add-input { flex: 1; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 8px 12px; font-family: var(--font-body); font-size: 14px; color: var(--text); outline: none; }
 .add-input::placeholder { color: var(--muted); }
 .add-input:focus { border-color: var(--primary); background: var(--surface); }
-.add-btn { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); border-radius: var(--radius-sm); padding: 8px 14px; font-family: var(--font-body); font-weight: 600; font-size: 12px; cursor: pointer; transition: color 0.12s, border-color 0.12s; white-space: nowrap; }
+.add-btn { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); border-radius: var(--radius-sm); padding: 8px 14px; font-family: var(--font-body); font-weight: 600; font-size: 13px; cursor: pointer; transition: color 0.12s, border-color 0.12s; white-space: nowrap; }
 .add-btn:hover { color: var(--primary); border-color: var(--primary); }
-.note-box { background: var(--surface); border: 1px dashed var(--border2); border-radius: var(--radius); padding: 16px 18px; font-size: 12px; color: var(--muted); margin-top: 1.5rem; line-height: 1.6; }
-.empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 13px; }
-.custom-tag { font-size: 10px; color: var(--muted); border: 1px solid var(--border2); border-radius: 99px; padding: 2px 8px; margin-left: 6px; flex-shrink: 0; font-weight: 600; }
-#failBanner { background: var(--warn-bg); border: 1px solid rgba(255,107,107,0.3); border-radius: var(--radius); padding: 12px 16px; font-size: 12px; color: var(--warn); margin-bottom: 1.5rem; }
+.note-box { background: var(--surface); border: 1px dashed var(--border2); border-radius: var(--radius); padding: 16px 18px; font-size: 13px; color: var(--muted); margin-top: 1.5rem; line-height: 1.6; }
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 14px; }
+.custom-tag { font-size: 11px; color: var(--muted); border: 1px solid var(--border2); border-radius: 99px; padding: 2px 8px; margin-left: 6px; flex-shrink: 0; font-weight: 600; }
+#failBanner { background: var(--warn-bg); border: 1px solid rgba(255,107,107,0.3); border-radius: var(--radius); padding: 12px 16px; font-size: 13px; color: var(--warn); margin-bottom: 1.5rem; }
+
+/* Small screens: tighten padding and let the week header wrap instead of squeezing */
+@media (max-width: 999px) {
+  .setup, #failBanner, #statsWrap { margin-bottom: 1.5rem; }
+}
+@media (max-width: 480px) {
+  html { font-size: 16px; }
+  .page { padding: 2rem 1rem 5rem; }
+  h1 { font-size: 2rem; }
+  .week-header { flex-wrap: wrap; }
+  .week-date { min-width: 0; }
+}
