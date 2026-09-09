@@ -141,6 +141,37 @@ function getGroupTasks(week, courseKey) {
 
 function uid() { return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
+// Aggressive multi-burst blast: big corner cannons, a center-screen burst, then a
+// couple of trailing bursts so it reads as a real celebration, not a blip.
+function fireConfetti() {
+  if (typeof confetti !== 'function') return;
+  const colors = Object.values(COURSES).map(c => c.color);
+  const defaults = { colors, gravity: 0.9, scalar: 1.3, ticks: 250 };
+
+  confetti({ ...defaults, particleCount: 160, angle: 60, spread: 70, startVelocity: 75, origin: { x: 0, y: 1 } });
+  confetti({ ...defaults, particleCount: 160, angle: 120, spread: 70, startVelocity: 75, origin: { x: 1, y: 1 } });
+  confetti({ ...defaults, particleCount: 120, angle: 90, spread: 100, startVelocity: 65, origin: { x: 0.5, y: 1 } });
+
+  setTimeout(() => {
+    confetti({ ...defaults, particleCount: 90, angle: 60, spread: 60, startVelocity: 55, origin: { x: 0.15, y: 1 } });
+    confetti({ ...defaults, particleCount: 90, angle: 120, spread: 60, startVelocity: 55, origin: { x: 0.85, y: 1 } });
+  }, 200);
+
+  setTimeout(() => {
+    confetti({ ...defaults, particleCount: 60, angle: 90, spread: 120, startVelocity: 45, origin: { x: 0.5, y: 0.9 } });
+  }, 400);
+}
+
+// Shared toggle used by both the checkbox and task-text click handlers, so confetti
+// logic only needs to live in one place.
+function toggleTaskDone(taskId, wasDone) {
+  state.done[taskId] = !wasDone;
+  if (!wasDone) fireConfetti(); // only celebrate on check, not uncheck
+  persistState();
+  render();
+  updateStats();
+}
+
 function updateStats() {
   let total = 0, done = 0;
   baseWeeks.forEach(w => {
@@ -234,8 +265,8 @@ function render() {
           ${t.custom ? '<span class="custom-tag">added</span>' : ''}
           <button class="del-btn" title="Delete task">✕</button>
         `;
-        row.querySelector(".checkbox").addEventListener("click", () => { state.done[t.id] = !t.done; persistState(); render(); updateStats(); });
-        row.querySelector(".task-text").addEventListener("click", () => { state.done[t.id] = !t.done; persistState(); render(); updateStats(); });
+        row.querySelector(".checkbox").addEventListener("click", () => toggleTaskDone(t.id, t.done));
+        row.querySelector(".task-text").addEventListener("click", () => toggleTaskDone(t.id, t.done));
         row.querySelector(".del-btn").addEventListener("click", (e) => { e.stopPropagation(); state.deleted[t.id] = true; persistState(); render(); updateStats(); });
         group.appendChild(row);
       });

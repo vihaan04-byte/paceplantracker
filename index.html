@@ -18,6 +18,8 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 </head>
 <body>
 <div class="page">
@@ -51,6 +53,7 @@
       <option value="lavender">🪻 Lavender</option>
     </select>
     <button class="add-btn" id="whatsNewBtn">📣 What's new</button>
+    <button class="add-btn" id="viewToggleBtn">📅 Calendar view</button>
     <button class="add-btn" id="logoutBtn">Log out</button>
   </div>
 
@@ -109,6 +112,10 @@
 
     <div class="layout-main">
       <div id="plan"><div class="empty-state">No plan generated yet.</div></div>
+      <div id="calendarView" style="display:none;">
+        <div id="calLegend" class="cal-legend"></div>
+        <div id="calRoot"></div>
+      </div>
     </div>
   </div>
 
@@ -130,6 +137,7 @@
 <script src="js/auth.js"></script>
 <script src="js/announcements.js"></script>
 <script src="js/tracker.js"></script>
+<script src="js/calendar.js"></script>
 <script src="js/parser.js"></script>
 <script src="js/main.js"></script>
 </body>

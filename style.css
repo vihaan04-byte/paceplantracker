@@ -246,3 +246,156 @@ details.setup summary {
   .week-header { flex-wrap: wrap; }
   .week-date { min-width: 0; }
 }
+
+
+/* ---------- calendar view: fullscreen mode ---------- */
+.layout.cal-active { display: block; }
+.layout.cal-active .layout-side { display: none; }
+
+#calendarView {
+  position: relative;
+  min-height: calc(100vh - 260px);
+}
+
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.1rem;
+  padding: 0 4px 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cal-legend .leg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.cal-tooltip {
+  position: fixed;
+  display: none;
+  z-index: 1000;
+  background: var(--text);
+  color: var(--bg);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  max-width: 280px;
+}
+
+/* ---------- calendar view theming (matches app's rounded/soft style) ---------- */
+#calendarView {
+  --fc-border-color: var(--border);
+  --fc-today-bg-color: var(--primary-bg);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: var(--surface2);
+  --fc-list-event-hover-bg-color: var(--surface2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  font-family: var(--font-body);
+}
+
+#calendarView .fc-toolbar-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text);
+}
+
+#calendarView .fc-button {
+  background: var(--surface2) !important;
+  border: 1px solid var(--border2) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+  border-radius: var(--radius-sm) !important;
+  text-transform: capitalize;
+}
+
+#calendarView .fc-button:hover {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+#calendarView .fc-button-active {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #ffffff !important;
+}
+
+#calendarView .fc-col-header-cell-cushion {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+#calendarView .fc-daygrid-day-number {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  padding: 6px 8px;
+}
+
+#calendarView .fc-event {
+  border-radius: var(--radius-sm);
+  border: none;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#calendarView .fc-daygrid-event-harness {
+  margin-top: 2px;
+}
+
+#calendarView .fc-more-link {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+#calendarView .fc-popover {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  background: var(--surface);
+}
+
+#calendarView .fc-popover-header {
+  background: var(--surface2);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.fc-task-done { opacity: 0.5; text-decoration: line-through; }
+
+/* Week view: let day cells grow tall and roomy instead of shrink-wrapping to content
+   like month view does, and give tasks a bit more breathing room since there's far
+   more horizontal space per day. */
+#calendarView .fc-dayGridWeek-view .fc-daygrid-day-frame {
+  min-height: 60vh;
+}
+
+#calendarView .fc-dayGridWeek-view .fc-event {
+  font-size: 14px;
+  padding: 5px 10px;
+}
+
+#calendarView .fc-dayGridWeek-view .fc-daygrid-day-number {
+  font-size: 15px;
+}
