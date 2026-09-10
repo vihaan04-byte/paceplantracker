@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vihaan — Tracker</title>
+<title>KWS Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <script>
@@ -35,7 +35,10 @@
       <label>Email</label>
       <input type="text" id="authEmail" placeholder="you@example.com">
       <label>Password</label>
-      <input type="password" id="authPassword" placeholder="••••••••">
+      <div style="position:relative; display:flex; align-items:center;">
+        <input type="password" id="authPassword" placeholder="••••••••" style="padding-right:52px; margin-top:6px;">
+        <button type="button" id="togglePassword" style="position:absolute; right:10px; background:none; border:none; color:var(--primary); cursor:pointer; font-size:12px; font-weight:700; padding:4px 6px; line-height:1;">Show</button>
+      </div>
       <div class="subtitle" style="margin:10px 0 0;">First time here? Hit <strong>Sign up</strong>. Already have an account? Hit <strong>Log in</strong>.</div>
       <button class="gen-btn" id="loginBtn">Log in</button>
       <button class="gen-btn" id="signupBtn" style="margin-left:8px; background:transparent; border:1px solid var(--primary); color:var(--primary);">Sign up</button>

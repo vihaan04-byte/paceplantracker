@@ -3,6 +3,14 @@ function showAuthScreen() {
   document.getElementById('appContent').style.display = 'none';
 }
 
+document.getElementById('togglePassword').addEventListener('click', () => {
+  const input = document.getElementById('authPassword');
+  const btn = document.getElementById('togglePassword');
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  btn.textContent = showing ? 'Show' : 'Hide';
+});
+
 let appBooted = false;
 
 async function showApp(session) {
