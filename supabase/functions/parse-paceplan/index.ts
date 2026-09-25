@@ -27,7 +27,7 @@ Output ONLY valid JSON, no other text, in this exact shape:
       body: JSON.stringify({
         model: 'openai/gpt-oss-120b',
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: JSON.stringify(rows) }],
-        temperature: 0.1, reasoning_effort: 'low', max_completion_tokens: 4096
+        temperature: 0.1, reasoning_effort: 'low', max_completion_tokens: 6000
       })
     })
 
@@ -48,7 +48,7 @@ Output ONLY valid JSON, no other text, in this exact shape:
     }
 
     const weeks = JSON.parse(content).weeks
-    return new Response(JSON.stringify({ weeks }), {
+    return new Response(JSON.stringify({ weeks, finish_reason: choice.finish_reason }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   } catch (err) {

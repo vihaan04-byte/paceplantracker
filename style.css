@@ -234,6 +234,7 @@ details.setup summary {
 .empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 14px; }
 .custom-tag { font-size: 11px; color: var(--muted); border: 1px solid var(--border2); border-radius: 99px; padding: 2px 8px; margin-left: 6px; flex-shrink: 0; font-weight: 600; }
 #failBanner { background: var(--warn-bg); border: 1px solid rgba(255,107,107,0.3); border-radius: var(--radius); padding: 12px 16px; font-size: 13px; color: var(--warn); margin-bottom: 1.5rem; }
+#legacyBanner { background: var(--primary-bg); border: 1px solid rgba(46,196,182,0.3); border-radius: var(--radius); padding: 12px 16px; font-size: 13px; color: var(--text); margin-bottom: 1.5rem; }
 
 /* Small screens: tighten padding and let the week header wrap instead of squeezing */
 @media (max-width: 999px) {

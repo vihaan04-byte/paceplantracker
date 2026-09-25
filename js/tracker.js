@@ -14,7 +14,7 @@ function reloadStateFromLocalStorage() {
   try { const s = JSON.parse(localStorage.getItem(STATE_KEY) || "null"); if (s) state = s; } catch(e) {}
 }
 
-function planKey(month) { return "vihaan_tracker_plan_" + month; }
+const PLAN_KEY = 'vihaan_tracker_plan_full';
 
 // ---------- dynamic data (populated after generation or load) ----------
 let COURSES = {};
@@ -34,9 +34,7 @@ function dateSortKey(dr) {
 
 function slugify(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
 
-// Turns the combined {month, courses:[{course, weeks:[...]}]} AI output into
-// the {COURSES, baseWeeks} shape the renderer below expects.
-function buildTrackerData(combined) {
+function buildTrackerData(combined, month) {
   const weekMap = {};
   const courses = {};
   const failedCourses = [];
@@ -50,29 +48,31 @@ function buildTrackerData(combined) {
       courses[key] = { name: courseObj.course, color: PALETTE[colorIdx % PALETTE.length] };
       colorIdx++;
     }
-    courseObj.weeks.forEach(week => {
-      const rawDr = week.dateRange || ('wk' + week.weekNumber);
-      const dr = normalizeDateRange(rawDr);
-      const wid = slugify(dr);
-      if (!weekMap[dr]) {
-        weekMap[dr] = {
-          id: wid,
-          date: (week.weekNumber != null ? `Week ${week.weekNumber} · ` : '') + dr,
-          title: week.isBreak ? 'Break' : '',
-          note: week.isBreak ? 'break' : null,
-          sortKey: dateSortKey(dr),
-          groups: {}
-        };
-      }
-      if (!week.isBreak && week.tasks && week.tasks.length) {
-        weekMap[dr].groups[key] = week.tasks.map((t, i) => ({
-          id: `${key}-${wid}-${i}`,
-          t: t.text,
-          seedDone: !!t.done,
-          optional: !!t.optional
-        }));
-      }
-    });
+    courseObj.weeks
+      .filter(week => String(week.dateRange).toLowerCase().includes(month.toLowerCase()))
+      .forEach(week => {
+        const rawDr = week.dateRange || ('wk' + week.weekNumber);
+        const dr = normalizeDateRange(rawDr);
+        const wid = slugify(dr);
+        if (!weekMap[dr]) {
+          weekMap[dr] = {
+            id: wid,
+            date: (week.weekNumber != null ? `Week ${week.weekNumber} · ` : '') + dr,
+            title: week.isBreak ? 'Break' : '',
+            note: week.isBreak ? 'break' : null,
+            sortKey: dateSortKey(dr),
+            groups: {}
+          };
+        }
+        if (!week.isBreak && week.tasks && week.tasks.length) {
+          weekMap[dr].groups[key] = week.tasks.map((t, i) => ({
+            id: `${key}-${wid}-${i}`,
+            t: t.text,
+            seedDone: !!t.done,
+            optional: !!t.optional
+          }));
+        }
+      });
   });
 
   const weeks = Object.values(weekMap).sort((a, b) => a.sortKey - b.sortKey);
@@ -89,11 +89,11 @@ function loadPlan(month) {
   } catch (e) { return false; }
 }
 
-function applyPlan(combined) {
-  const built = buildTrackerData(combined);
+function applyPlan(combined, month) {
+  const built = buildTrackerData(combined, month);
   COURSES = built.courses;
   baseWeeks = built.weeks;
-  currentMonth = combined.month;
+  currentMonth = month;
 
   // Seed done-state from the source pace plan's own status column,
   // but only for tasks we haven't seen before (don't clobber manual toggles on regenerate).

@@ -1,1 +1,4 @@
 node_modules/
+paceplan.xlsx
+test-token-ceiling.mjs
+.DS_Store

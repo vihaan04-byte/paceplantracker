@@ -1,8 +1,35 @@
-document.getElementById('monthSelect').value =
-  ['January','February','March','April','May','June','July','August','September','October','November','December'][new Date().getMonth()];
+syncMonthDropdowns(['January','February','March','April','May','June','July','August','September','October','November','December'][new Date().getMonth()]);
+
+function syncMonthDropdowns(month) {
+  document.getElementById('monthSelect').value = month;
+  document.getElementById('monthSwitcher').value = month;
+}
+
+document.getElementById('monthSelect').addEventListener('change', () => {
+  const month = document.getElementById('monthSelect').value;
+  syncMonthDropdowns(month);
+  const raw = localStorage.getItem(PLAN_KEY);
+  if (raw) applyPlan(JSON.parse(raw), month);
+});
+
+document.getElementById('monthSwitcher').addEventListener('change', () => {
+  const month = document.getElementById('monthSwitcher').value;
+  syncMonthDropdowns(month);
+  const raw = localStorage.getItem(PLAN_KEY);
+  if (raw) applyPlan(JSON.parse(raw), month);
+});
+
+function showGenProgress(show) {
+  document.getElementById('genProgressWrap').style.display = show ? '' : 'none';
+}
+function updateGenProgress(done, total, label) {
+  const pct = total ? Math.round(done / total * 100) : 0;
+  document.getElementById('genProgressFill').style.width = pct + '%';
+  document.getElementById('genProgressPct').textContent = pct + '%';
+  document.getElementById('genProgressLabel').textContent = label;
+}
 
 document.getElementById('genBtn').addEventListener('click', async () => {
-  const month = document.getElementById('monthSelect').value;
   const status = document.getElementById('genStatus');
   if (!workbook) { alert('Upload a file first.'); return; }
 
@@ -10,26 +37,67 @@ document.getElementById('genBtn').addEventListener('click', async () => {
     .filter(row => row.querySelector('input').checked).map(row => row.dataset.sheetName);
   if (checkedSheets.length === 0) { alert('Check at least one sheet.'); return; }
 
-  const combined = { month, courses: [] };
+  // Precompute total chunk count across all checked sheets, for the progress bar.
+  const chunkCounts = checkedSheets.map(sheetName => {
+    const sheet = workbook.Sheets[sheetName];
+    let rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+    rows = rows.map(row => { while (row.length && (row[row.length-1] === null || row[row.length-1] === '')) row.pop(); return row; }).filter(row => row.length > 0);
+    const headerIdx = rows.findIndex(row => row.some(cell => typeof cell === 'string' && /week/i.test(cell) && /number/i.test(cell)));
+    const dataRowCount = rows.filter((_, i) => i !== headerIdx).length;
+    return Math.ceil(dataRowCount / DEFAULT_CHUNK_SIZE);
+  });
+  const totalChunks = chunkCounts.reduce((a, b) => a + b, 0);
+  let completedChunks = 0;
+
   status.textContent = '';
+  showGenProgress(true);
+  updateGenProgress(0, totalChunks, 'Starting…');
+
+  const combined = { courses: [] };
   for (const sheetName of checkedSheets) {
-    status.textContent += `Parsing "${sheetName}"…\n`;
     try {
-      const weeks = await parseSheet(sheetName, month);
+      const weeks = await parseFullSheet(
+        sheetName,
+        msg => { updateGenProgress(completedChunks, totalChunks, `${sheetName}: ${msg}`); },
+        () => { completedChunks++; updateGenProgress(completedChunks, totalChunks, `${sheetName}…`); }
+      );
       combined.courses.push({ course: sheetName, weeks });
     } catch (err) {
       combined.courses.push({ course: sheetName, error: err.message });
-      status.textContent += `  ⚠ ${sheetName} failed: ${err.message}\n`;
+      status.textContent += `⚠ ${sheetName} failed: ${err.message}\n`;
     }
   }
-  localStorage.setItem(planKey(month), JSON.stringify(combined));
-  pushToSupabase(planKey(month), combined);
+  showGenProgress(false);
+  localStorage.setItem(PLAN_KEY, JSON.stringify(combined));
+  pushToSupabase(PLAN_KEY, combined);
   pushToSupabase('vihaan_tracker_selected_sheets', checkedSheets);
   const uploadedFile = document.getElementById('fileInput').files[0];
   if (uploadedFile) uploadPaceplanFile(uploadedFile);
-  status.textContent += `Done — ${month} generated.`;
-  applyPlan(combined);
+  document.getElementById('legacyBanner').style.display = 'none';
+  status.textContent += `Done — full year parsed.`;
+  applyPlan(combined, currentViewMonth());
 });
+
+function currentViewMonth() {
+  return ['January','February','March','April','May','June','July','August','September','October','November','December'][new Date().getMonth()];
+}
+
+async function bootTracker() {
+  const rawFull = localStorage.getItem(PLAN_KEY);
+  if (rawFull) {
+    applyPlan(JSON.parse(rawFull), currentViewMonth());
+    return;
+  }
+  // Temporary fallback: old per-month plans still work until you manually clear them.
+  const legacyKey = 'vihaan_tracker_plan_' + currentViewMonth();
+  const rawLegacy = localStorage.getItem(legacyKey);
+  if (rawLegacy) {
+    applyPlan(JSON.parse(rawLegacy), currentViewMonth());
+    const banner = document.getElementById('legacyBanner');
+    banner.style.display = '';
+    banner.innerHTML = `📦 You're viewing your old September plan. Re-upload your pace plan above to switch to the new full-year tracker — old data will be cleared October 5th.`;
+  }
+}
 
 document.getElementById('resetBtn').addEventListener('click', async () => {
   if (!confirm('This clears all saved progress and generated plans — from this device AND your account. Continue?')) return;
@@ -69,11 +137,13 @@ async function attemptAutoRollover(month) {
   return true;
 }
 
-// Called after login (see auth.js), once Supabase data has been pulled into localStorage.
+function currentViewMonth() {
+  return ['January','February','March','April','May','June','July','August','September','October','November','December'][new Date().getMonth()];
+}
+
 async function bootTracker() {
-  const thisMonth = ['January','February','March','April','May','June','July','August','September','October','November','December'][new Date().getMonth()];
-  const loaded = loadPlan(thisMonth);
-  if (!loaded) {
-    await attemptAutoRollover(thisMonth);
+  const raw = localStorage.getItem(PLAN_KEY);
+  if (raw) {
+    applyPlan(JSON.parse(raw), currentViewMonth());
   }
 }

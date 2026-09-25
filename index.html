@@ -50,6 +50,11 @@
 
   <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:0.5rem;">
     <span class="subtitle" style="margin:0;" id="userEmail"></span>
+    <select id="monthSwitcher" class="add-btn" style="cursor:pointer;">
+      <option>January</option><option>February</option><option>March</option><option>April</option>
+      <option>May</option><option>June</option><option>July</option><option>August</option>
+      <option>September</option><option>October</option><option>November</option><option>December</option>
+    </select>
     <select id="themeSelect" class="add-btn" style="cursor:pointer;">
       <option value="default">🎨 Default</option>
       <option value="mint">🌿 Mint</option>
@@ -82,6 +87,7 @@
         <input type="file" id="fileInput" accept=".xlsx">
 
         <label>Which sheets (courses)?</label>
+        <div class="gen-status" style="color:var(--muted); margin-top:6px;">⏱ First generate now parses your whole school year at once (so every month loads instantly after) — this can take a few minutes, especially with multiple courses.</div>
         <div class="gen-status" style="color:var(--warn); margin-top:6px;">⚠ Don't generate self-paced courses like Seminar, or any course you don't recognize — uncheck those below.</div>
         <div id="sheetChecks" style="margin-top:6px; font-size:13px; color:var(--muted);">Upload a file first</div>
 
@@ -95,9 +101,17 @@
         <button class="gen-btn" id="genBtn" disabled>Generate this month</button>
         <button class="gen-btn" id="resetBtn" style="margin-left:8px; background:transparent; border:1px solid var(--warn); color:var(--warn);">Reset all local data</button>
         <div class="gen-status" id="genStatus"></div>
+        <div id="genProgressWrap" style="display:none; margin-top:10px;">
+          <div class="progress-row">
+            <div class="progress-track"><div class="progress-fill" id="genProgressFill" style="width:0%"></div></div>
+            <div class="progress-pct" id="genProgressPct">0%</div>
+          </div>
+        <div class="gen-status" id="genProgressLabel" style="margin-top:2px;"></div>
+</div>
       </details>
 
       <div id="failBanner" style="display:none;"></div>
+      <div id="legacyBanner" style="display:none;"></div>
 
       <div id="statsWrap" style="display:none;">
         <div class="progress-row">
