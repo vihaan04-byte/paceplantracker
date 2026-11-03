@@ -75,7 +75,7 @@
   <div class="layout" id="layoutWrap">
     <div class="layout-side">
       <details class="setup" id="setup" open>
-        <summary>🚀 Setup — generate a month from your pace plan</summary>
+        <summary>🚀 Add courses — upload a pace plan</summary>
 
         <label>Upload paceplan (.xlsx)</label>
         <div class="setup-help">
@@ -87,19 +87,13 @@
         <input type="file" id="fileInput" accept=".xlsx">
 
         <label>Which sheets (courses)?</label>
-        <div class="gen-status" style="color:var(--muted); margin-top:6px;">⏱ First generate now parses your whole school year at once (so every month loads instantly after) — this can take a few minutes, especially with multiple courses.</div>
+        <div class="gen-status" style="color:var(--muted); margin-top:6px;">⏱ Uploading parses your whole school year at once, so every month loads instantly afterward. This can take a few minutes. Courses you add are merged in with your existing ones. Uploading a course with the same name refreshes just that course.</div>
         <div class="gen-status" style="color:var(--warn); margin-top:6px;">⚠ Don't generate self-paced courses like Seminar, or any course you don't recognize — uncheck those below.</div>
         <div id="sheetChecks" style="margin-top:6px; font-size:13px; color:var(--muted);">Upload a file first</div>
 
-        <label>Month</label>
-        <select id="monthSelect">
-          <option>January</option><option>February</option><option>March</option><option>April</option>
-          <option>May</option><option>June</option><option>July</option><option>August</option>
-          <option>September</option><option>October</option><option>November</option><option>December</option>
-        </select>
 
-        <button class="gen-btn" id="genBtn" disabled>Generate this month</button>
-        <button class="gen-btn" id="resetBtn" style="margin-left:8px; background:transparent; border:1px solid var(--warn); color:var(--warn);">Reset all local data</button>
+        <button class="gen-btn" id="genBtn" disabled>Add selected courses</button>
+        <button class="gen-btn" id="resetBtn" style="margin-left:8px; background:transparent; border:1px solid var(--warn); color:var(--warn);">Reset everything</button>
         <div class="gen-status" id="genStatus"></div>
         <div id="genProgressWrap" style="display:none; margin-top:10px;">
           <div class="progress-row">
@@ -110,6 +104,19 @@
 </div>
       </details>
 
+      <details class="setup" id="manualSetup">
+        <summary>✍️ Add a course manually</summary>
+        <label>Course name</label>
+        <input class="add-input" type="text" id="manualCourseName" placeholder="e.g. Seminar" style="width:100%; margin-top:6px;">
+        <div class="setup-help">For self-paced courses with no pace plan. It shows up in every week, and you add its tasks yourself.</div>
+        <button class="gen-btn" id="addManualBtn">Add course</button>
+        <div class="gen-status" id="manualStatus"></div>
+      </details>
+
+      <details class="setup" id="courseListWrap">
+        <summary>🗂 Your courses</summary>
+        <div id="courseList"></div>
+      </details>
       <div id="failBanner" style="display:none;"></div>
       <div id="legacyBanner" style="display:none;"></div>
 

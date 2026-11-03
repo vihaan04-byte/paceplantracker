@@ -38,6 +38,7 @@ function buildTrackerData(combined, month) {
   const weekMap = {};
   const courses = {};
   const failedCourses = [];
+  const manualKeys = [];
   let colorIdx = 0;
 
   combined.courses.forEach(courseObj => {
@@ -46,8 +47,9 @@ function buildTrackerData(combined, month) {
     const key = slugify(courseObj.course);
     if (!courses[key]) {
       courses[key] = { name: courseObj.course, color: PALETTE[colorIdx % PALETTE.length] };
-      colorIdx++;
-    }
+       colorIdx++;
+     }
+     if (courseObj.manual) manualKeys.push(key);
     courseObj.weeks
       .filter(week => String(week.dateRange).toLowerCase().includes(month.toLowerCase()))
       .forEach(week => {
@@ -75,6 +77,12 @@ function buildTrackerData(combined, month) {
       });
   });
 
+  // Manual courses have no parsed tasks, so give them an empty group in every
+  // non-break week. That makes the existing per-week "Add a task" row appear.
+  Object.values(weekMap).forEach(w => {
+     if (w.note === 'break') return;
+     manualKeys.forEach(k => { if (!w.groups[k]) w.groups[k] = []; });
+  });
   const weeks = Object.values(weekMap).sort((a, b) => a.sortKey - b.sortKey);
   return { courses, weeks, failedCourses };
 }
@@ -110,6 +118,7 @@ function applyPlan(combined, month) {
   // Switch on the sidebar layout now that there's a plan to show alongside the setup
   // panel — on first-time setup (no plan yet) the panel stays full-width instead.
   document.getElementById('layoutWrap').classList.add('has-plan');
+  renderCourseList(combined);
 
   const failBanner = document.getElementById('failBanner');
   if (built.failedCourses.length) {

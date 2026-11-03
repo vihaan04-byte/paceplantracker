@@ -28,18 +28,19 @@ A zero-budget school pace-plan tracker for KWS students. Upload your xlsx pace p
 2. **Upload xlsx** → SheetJS reads it client-side into raw rows. (If the pace plan lives in Google Sheets, the setup panel shows steps for exporting it as .xlsx first.)
 3. **Pick sheets** → no month picker needed at generate time anymore — the whole year gets parsed in one go.
 4. **Generate** → each checked sheet's full set of rows is chunked (20 rows per chunk by default) and sent through the parse-paceplan Edge Function; a progress bar shows live chunk-by-chunk status since this can take a few minutes for multiple dense courses. Chunks that come back too large are automatically split and retried; rate-limit (429) responses back off using Groq's own suggested wait time before retrying.
-5. **Store** → the full year's parsed weeks per course are saved to Supabase (`user_data` table, single `vihaan_tracker_plan_full` key) + the uploaded xlsx stored in the private bucket.
+5. **Store** → parsed courses are **merged** into the existing `vihaan_tracker_plan_full` blob (`user_data` table). Uploading a course with the same name replaces just that course; all others are untouched. The uploaded xlsx is also stored in the private bucket.
 6. **View any month** → the header's month dropdown re-renders instantly from already-parsed data — no more network calls or re-parsing when switching months.
 7. **Check off tasks** → Synced to Supabase instantly (localStorage is fast cache, Supabase is source of truth); a confetti burst fires on check (not uncheck).
 8. **Switch to calendar view** → Same tasks, laid out day-by-day (month or week grid); drag a task to a different day to reassign it — students choose their own daily pacing, the app never auto-schedules for them.
+9. **Add or remove courses anytime** → upload another pace plan, or add a course manually (e.g. Seminar) and fill in its tasks yourself. Courses are managed under "Your courses"; removing one keeps all progress, so re-adding the same name restores it.
 
 ## Key Architecture Details
 
 - **Full-year single-parse (v2):** The core architecture change from v1. Previously, each month required its own Groq parse call, and `attemptAutoRollover` re-parsed automatically when a new month started. Now, `parseFullSheet` (in `parser.js`) parses an entire sheet's full year in one generate action: it chunks the sheet's data rows (default 20 rows/chunk, tunable via `DEFAULT_CHUNK_SIZE`), sends each chunk through `parseRowsChunk`, and merges all chunks' `weeks` arrays. Two failure modes are handled automatically: a chunk that's too large for the model's response cap gets split in half and retried recursively (`parseChunkWithSplit`); a 429 rate-limit response is detected by parsing the error message text (the edge function always returns HTTP 500 regardless of the underlying Groq status code, so `res.status` alone can't distinguish a rate limit from any other failure) and retried after the wait time Groq itself reports, plus a small buffer. The full merged result — every week across the whole year, per course — is stored once under a single `vihaan_tracker_plan_full` key, replacing the old per-month `vihaan_tracker_plan_<month>` keys. `buildTrackerData`/`applyPlan` now take a `month` argument and filter the stored weeks client-side at render time, so switching months is a pure in-memory re-render with zero network calls. `attemptAutoRollover` is removed entirely — there's nothing left to auto-roll, every month's data already exists after the first generate.
+- **Multi-course merge & manual courses:** Generate reads the existing `PLAN_KEY` blob, drops any course with a matching name, and appends the new ones, so adding courses never wipes existing ones. A manual course is stored as `{ course, manual: true, weeks: [] }`. In `buildTrackerData`, manual courses get an empty task group in every non-break week, which makes the existing per-week "Add a task" row appear with no new schema or render code. Removing a course only edits the course list; `state.done`/`custom`/`deleted`/`taskDay` are keyed by task ID and are left alone, so re-adding a course restores its progress. Known limitation: manual courses borrow week structure from parsed courses, so a plan with only manual courses has no weeks yet.
 - **Known v1→v2 migration gap:** Task IDs are derived from course + week + index, so a fresh full-year parse produces different IDs than the old per-month parses did. This means a user's previously-checked progress doesn't carry over automatically on first v2 generate — old Supabase rows aren't deleted, just orphaned from the new ID scheme. Handled via a one-time announcement asking testers to re-check completed tasks, rather than building ID-matching migration logic for a beta-stage, one-time transition.
-- **Month switcher (v2):** A month `<select>` now lives directly in the persistent header bar (`#monthSwitcher`), not just inside the collapsible Setup panel, since switching months is now a routine action rather than a one-time setup step. Both dropdowns stay in sync via `syncMonthDropdowns`.
+- **Month switcher (v2):** A month `<select>` lives in the persistent header bar (`#monthSwitcher`), since switching months is a routine action. The old duplicate dropdown inside Setup was removed.
 - **Generate progress UI (v2):** Since a full-year generate can take a few minutes (especially across multiple dense courses, due to Groq's free-tier 8000 TPM limit forcing retries/backoff), the Setup panel shows a live progress bar (`#genProgressWrap`) that ticks up per completed chunk across all checked sheets, with a text label showing which sheet/row-range is currently parsing.
-- **Legacy-data fallback banner (v2):** Existing users who haven't re-generated yet still see their old v1 per-month plan (if one exists in localStorage) on login, with a banner explaining that old data will be cleared on a set date and prompting them to re-upload. This is a deliberate, time-boxed migration bridge — see Maintenance Notes for the cleanup step.
 - **Calendar view:** A second, optional view of the same task data — no separate data source. Tasks default to a day within their assigned week (spread Mon–Fri via a stable per-task hash, not all piled on Monday) until the student manually drags one to a specific day. Drag position is stored per-task in `state.taskDay` (`{ taskId: "YYYY-MM-DD" }`), synced through the existing `persistState()` → Supabase `user_data` pipeline like everything else — no new tables or schema changes. Month and week grids only (no hour/time slots, since the app deliberately doesn't schedule *when in the day* something happens — only *which day*). Switching to calendar view hides the sidebar and expands the calendar to full width, with a floating course-color legend. Clicking a task in the calendar toggles done state, same as list view.
 - **Confetti on task completion:** A multi-burst `canvas-confetti` animation (dual corner cannons + center burst + two trailing waves) fires only when a task transitions from unchecked → checked, using the current month's course colors. Purely cosmetic — no state or sync implications.
 - **Theming:** 3 built-in themes (default/mint/lavender), each its own accent color, switchable via a dropdown in the header. Themes are plain CSS variables scoped under `[data-theme="..."]` blocks in `style.css`, with `theme.js` handling the switch, localStorage caching (avoids a flash of the wrong theme on load — applied via an inline script in `<head>`, before first paint), and Supabase sync so the choice follows a user across devices. Structural tokens (radius, fonts) live once on `:root`; only color tokens are per-theme — adding a future theme (e.g. dark mode) is just a new `[data-theme="..."]` block plus a new `<option>` in the dropdown, no JS changes needed. The calendar view's colors are wired to the same CSS variables (via FullCalendar's `--fc-*` custom properties), so it re-themes automatically too.
@@ -60,12 +61,12 @@ tracker-app/
 │   ├── supabase-client.js     # Supabase connection + dev/prod toggle
 │   ├── auth.js                # Login/signup screen + session mgmt
 │   ├── sync.js                # Supabase read/write + Storage file ops
-│   ├── theme.js                # Theme switching, localStorage cache, Supabase sync
+│   ├── theme.js               # Theme switching, localStorage cache, Supabase sync
 │   ├── tracker.js             # Rendering, month-filtered state mgmt, UI interactions, confetti
 │   ├── calendar.js            # Calendar view (month/week), drag-to-reassign, floating legend, tooltips
 │   ├── parser.js              # SheetJS + chunked full-year Groq parsing with retry/backoff
 │   ├── announcements.js       # What's-new popup, last-seen tracking
-│   └── main.js                # Button handlers, boot flow, progress UI, month switcher
+│   └── main.js                # Button handlers, boot flow, progress UI, month switcher, course add/remove
 ├── supabase/                  # CLI config (don't touch)
 ├── package.json               # CLI dependencies
 └── .gitignore
@@ -93,7 +94,7 @@ tracker-app/
 
 ## Supabase Schema
 
-- **user_data:** `(user_id, key, value, updated_at)` with RLS. Stores all app state as key/value pairs — including the full-year plan (`vihaan_tracker_plan_full`), progress, theme preference, calendar day-assignments, etc.
+- **user_data:** `(user_id, key, value, updated_at)` with RLS. Stores all app state as key/value pairs — including the full-year plan (vihaan_tracker_plan_full, which holds both parsed and manual courses), progress, theme preference, calendar day-assignments, etc.
 - **announcements:** `(id, title, body, created_at)` with RLS. Admin adds rows via Table Editor dashboard; app fetches latest on login.
 - **Storage/paceplans:** Private bucket. Users' uploaded xlsx files stored at `user_id/paceplan.xlsx`, RLS policies lock each user to their own.
 
@@ -104,14 +105,14 @@ tracker-app/
 - **Groq rate limit hit during a generate:** Handled automatically now via retry/backoff — no manual action needed unless it's persistently failing, in which case check Groq's dashboard for account-level throttling.
 - **Reset a user's data:** Table Editor → user_data → delete rows where `user_id` matches theirs (get UUID from Supabase Auth tab).
 - **Add a new theme:** Add a `[data-theme="yourname"]` block in `style.css` with the same variable names as the existing themes, then add a matching `<option value="yourname">` to `#themeSelect` in `index.html`. No JS changes needed — `theme.js` reads theme names generically.
-- **v1 → v2 legacy data cleanup (time-boxed):** After the announced cutoff date, remove the legacy-fallback block in `bootTracker` (main.js) that reads old `vihaan_tracker_plan_<month>` keys and shows `#legacyBanner`. This was a deliberate short-term bridge, not permanent — leaving it in indefinitely adds dead-weight complexity once all testers have re-generated.
+
 
 ## Future Roadmap (Beyond v2)
 
 - Day-view calendar (currently month + week only).
 - Adaptive rescheduling: detect overdue tasks, intelligently push remaining work to future weeks.
 - Configurable course end dates ("move Bio from May to Jan").
-- Multi-file upload: support uploading multiple pace plan files for courses added throughout the year, appending to a shared sheet checklist.
+- Manual-only plans: generate default school-year weeks so a user with no pace plan can use manual courses alone.
 - Dark mode (structure is already in place — see "Add a new theme" above).
 - Mascot.
 - Full UI for admins to manage announcements/users (not yet built; Table Editor is current admin panel).

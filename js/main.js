@@ -1,16 +1,8 @@
 syncMonthDropdowns(['January','February','March','April','May','June','July','August','September','October','November','December'][new Date().getMonth()]);
 
 function syncMonthDropdowns(month) {
-  document.getElementById('monthSelect').value = month;
   document.getElementById('monthSwitcher').value = month;
 }
-
-document.getElementById('monthSelect').addEventListener('change', () => {
-  const month = document.getElementById('monthSelect').value;
-  syncMonthDropdowns(month);
-  const raw = localStorage.getItem(PLAN_KEY);
-  if (raw) applyPlan(JSON.parse(raw), month);
-});
 
 document.getElementById('monthSwitcher').addEventListener('change', () => {
   const month = document.getElementById('monthSwitcher').value;
@@ -68,35 +60,79 @@ document.getElementById('genBtn').addEventListener('click', async () => {
     }
   }
   showGenProgress(false);
-  localStorage.setItem(PLAN_KEY, JSON.stringify(combined));
-  pushToSupabase(PLAN_KEY, combined);
+  let existing = { courses: [] };
+  try { existing = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null') || existing; } catch (e) {}
+  const newNames = new Set(combined.courses.map(c => c.course));
+  const merged = { courses: [...existing.courses.filter(c => !newNames.has(c.course)), ...combined.courses] };
+  localStorage.setItem(PLAN_KEY, JSON.stringify(merged));
+  pushToSupabase(PLAN_KEY, merged);
   pushToSupabase('vihaan_tracker_selected_sheets', checkedSheets);
   const uploadedFile = document.getElementById('fileInput').files[0];
   if (uploadedFile) uploadPaceplanFile(uploadedFile);
   document.getElementById('legacyBanner').style.display = 'none';
   status.textContent += `Done — full year parsed.`;
-  applyPlan(combined, currentViewMonth());
+  applyPlan(merged, currentViewMonth())
 });
+
+document.getElementById('addManualBtn').addEventListener('click', () => {
+  const input = document.getElementById('manualCourseName');
+  const msg = document.getElementById('manualStatus');
+  const name = input.value.trim();
+  if (!name) { msg.textContent = 'Enter a course name.'; return; }
+
+  let existing = { courses: [] };
+  try { existing = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null') || existing; } catch (e) {}
+  if (existing.courses.some(c => c.course.toLowerCase() === name.toLowerCase())) {
+    msg.textContent = `"${name}" already exists.`;
+    return;
+  }
+
+  existing.courses.push({ course: name, manual: true, weeks: [] });
+  localStorage.setItem(PLAN_KEY, JSON.stringify(existing));
+  pushToSupabase(PLAN_KEY, existing);
+  input.value = '';
+  msg.textContent = `Added ${name}.`;
+  applyPlan(existing, document.getElementById('monthSwitcher').value);
+});
+
+function renderCourseList(combined) {
+  const el = document.getElementById('courseList');
+  el.innerHTML = '';
+  combined.courses.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'sheet-row';
+    const label = document.createElement('span');
+    label.style.flex = '1';
+    label.textContent = c.course + (c.manual ? ' (manual)' : '') + (c.error ? ' (failed)' : '');
+    const btn = document.createElement('button');
+    btn.className = 'del-btn';
+    btn.style.opacity = 1;
+    btn.title = 'Remove course';
+    btn.textContent = '✕';
+    btn.addEventListener('click', () => deleteCourse(c.course));
+    row.appendChild(label);
+    row.appendChild(btn);
+    el.appendChild(row);
+  });
+}
+
+function deleteCourse(name) {
+  if (!confirm(`Remove "${name}" from your tracker? Your progress on it is kept, so re-adding a course with the same name restores it.`)) return;
+  let existing = { courses: [] };
+  try { existing = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null') || existing; } catch (e) {}
+  existing.courses = existing.courses.filter(c => c.course !== name);
+  localStorage.setItem(PLAN_KEY, JSON.stringify(existing));
+  pushToSupabase(PLAN_KEY, existing);
+  applyPlan(existing, document.getElementById('monthSwitcher').value);
+}
 
 function currentViewMonth() {
   return ['January','February','March','April','May','June','July','August','September','October','November','December'][new Date().getMonth()];
 }
 
 async function bootTracker() {
-  const rawFull = localStorage.getItem(PLAN_KEY);
-  if (rawFull) {
-    applyPlan(JSON.parse(rawFull), currentViewMonth());
-    return;
-  }
-  // Temporary fallback: old per-month plans still work until you manually clear them.
-  const legacyKey = 'vihaan_tracker_plan_' + currentViewMonth();
-  const rawLegacy = localStorage.getItem(legacyKey);
-  if (rawLegacy) {
-    applyPlan(JSON.parse(rawLegacy), currentViewMonth());
-    const banner = document.getElementById('legacyBanner');
-    banner.style.display = '';
-    banner.innerHTML = `📦 You're viewing your old September plan. Re-upload your pace plan above to switch to the new full-year tracker — old data will be cleared October 5th.`;
-  }
+  const raw = localStorage.getItem(PLAN_KEY);
+  if (raw) applyPlan(JSON.parse(raw), currentViewMonth());
 }
 
 document.getElementById('resetBtn').addEventListener('click', async () => {
@@ -106,44 +142,3 @@ document.getElementById('resetBtn').addEventListener('click', async () => {
   location.reload();
 });
 
-// Tries to auto-generate the given month from a previously saved paceplan file + sheet
-// selection, if one exists. Returns true if it succeeded, false if there's nothing saved yet.
-async function attemptAutoRollover(month) {
-  const { data: sheetRow } = await sb.from('user_data').select('value').eq('key', 'vihaan_tracker_selected_sheets').maybeSingle();
-  if (!sheetRow) return false;
-  const sheetNames = sheetRow.value;
-
-  const wb = await downloadPaceplanWorkbook();
-  if (!wb) return false;
-  workbook = wb;
-
-  const status = document.getElementById('genStatus');
-  status.textContent = `New month detected — auto-generating ${month} from your saved paceplan…\n`;
-  const combined = { month, courses: [] };
-  for (const sheetName of sheetNames) {
-    status.textContent += `Parsing "${sheetName}"…\n`;
-    try {
-      const weeks = await parseSheet(sheetName, month);
-      combined.courses.push({ course: sheetName, weeks });
-    } catch (err) {
-      combined.courses.push({ course: sheetName, error: err.message });
-      status.textContent += `  ⚠ ${sheetName} failed: ${err.message}\n`;
-    }
-  }
-  localStorage.setItem(planKey(month), JSON.stringify(combined));
-  pushToSupabase(planKey(month), combined);
-  status.textContent += `Done — ${month} generated automatically.`;
-  applyPlan(combined);
-  return true;
-}
-
-function currentViewMonth() {
-  return ['January','February','March','April','May','June','July','August','September','October','November','December'][new Date().getMonth()];
-}
-
-async function bootTracker() {
-  const raw = localStorage.getItem(PLAN_KEY);
-  if (raw) {
-    applyPlan(JSON.parse(raw), currentViewMonth());
-  }
-}
