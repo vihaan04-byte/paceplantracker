@@ -96,7 +96,8 @@ body {
   /* Before a plan exists: full-width setup panel, roomy enough for the file input,
      sheet checkboxes, and month picker to sit comfortably rather than cramped. */
   .layout:not(.has-plan) { display: block; }
-  .layout:not(.has-plan) .setup { max-width: 640px; margin: 0 auto; }
+  .layout:not(.has-plan) .setup { max-width: 640px; width: 100%; margin: 0 auto 2rem; }
+    .layout:not(.has-plan) #courseListWrap { display: none; }
   .layout:not(.has-plan) #failBanner,
   .layout:not(.has-plan) #statsWrap { max-width: 640px; margin-left: auto; margin-right: auto; }
 }
