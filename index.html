@@ -12,7 +12,10 @@
   (function() {
     try {
       var t = localStorage.getItem('vihaan_tracker_theme');
-      if (t) document.documentElement.setAttribute('data-theme', t);
+      if (t) document.documentElement.setAttribute('data-theme', t.replace(/"/g, ''));
+      var m = (localStorage.getItem('vihaan_tracker_mode') || 'system').replace(/"/g, '');
+      var dark = m === 'dark' || (m !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-mode', dark ? 'dark' : 'light');
     } catch (e) {}
   })();
 </script>
@@ -56,9 +59,16 @@
       <option>September</option><option>October</option><option>November</option><option>December</option>
     </select>
     <select id="themeSelect" class="add-btn" style="cursor:pointer;">
-      <option value="default">🎨 Default</option>
-      <option value="mint">🌿 Mint</option>
-      <option value="lavender">🪻 Lavender</option>
+      <option value="default">🟣 Purple</option>
+      <option value="teal">🟢 Teal</option>
+      <option value="blue">🔵 Blue</option>
+      <option value="rose">🌸 Rose</option>
+      <option value="orange">🟠 Orange</option>
+    </select>
+    <select id="modeSelect" class="add-btn" style="cursor:pointer;">
+      <option value="system">🖥 Auto</option>
+      <option value="light">☀️ Light</option>
+      <option value="dark">🌙 Dark</option>
     </select>
     <button class="add-btn" id="whatsNewBtn">📣 What's new</button>
     <button class="add-btn" id="viewToggleBtn">📅 Calendar view</button>

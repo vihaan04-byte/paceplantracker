@@ -266,7 +266,7 @@ function render() {
         row.innerHTML = `
           <div class="checkbox">
             <svg class="check-icon" viewBox="0 0 8 8" fill="none">
-              <polyline points="1,4 3,6.5 7,1.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="1,4 3,6.5 7,1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
           <span class="task-text">${t.t}</span>

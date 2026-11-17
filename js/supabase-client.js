@@ -1,7 +1,7 @@
 // Flip this one line to switch which Supabase project the app talks to.
 // 'dev'  = your private sandbox for testing changes safely
 // 'prod' = the real one your friends actually use — be careful here
-const ENV = 'prod';
+const ENV = 'dev';
 
 const CONFIGS = {
   prod: {
