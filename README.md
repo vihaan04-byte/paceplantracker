@@ -1,4 +1,4 @@
-# Tracker App — v2.0
+# Tracker App — v2.5
 
 A zero-budget school pace-plan tracker for KWS students. Upload your xlsx pace plan once — the whole school year gets parsed and stored up front — and get an interactive month-by-month task tracker with instant month-switching, multi-user accounts, per-device sync, and a drag-to-reassign calendar view.
 
@@ -17,6 +17,8 @@ A zero-budget school pace-plan tracker for KWS students. Upload your xlsx pace p
 **Confetti:** `canvas-confetti` (MIT, loaded via CDN).
 
 **Fonts:** Baloo 2 + Inter from Google Fonts.
+
+**Design system:** Google Material 3 color palettes (5 accent themes, each with light + dark variants), plain CSS variables, no libraries.
 
 ## Budget
 
@@ -43,7 +45,7 @@ A zero-budget school pace-plan tracker for KWS students. Upload your xlsx pace p
 - **Generate progress UI (v2):** Since a full-year generate can take a few minutes (especially across multiple dense courses, due to Groq's free-tier 8000 TPM limit forcing retries/backoff), the Setup panel shows a live progress bar (`#genProgressWrap`) that ticks up per completed chunk across all checked sheets, with a text label showing which sheet/row-range is currently parsing.
 - **Calendar view:** A second, optional view of the same task data — no separate data source. Tasks default to a day within their assigned week (spread Mon–Fri via a stable per-task hash, not all piled on Monday) until the student manually drags one to a specific day. Drag position is stored per-task in `state.taskDay` (`{ taskId: "YYYY-MM-DD" }`), synced through the existing `persistState()` → Supabase `user_data` pipeline like everything else — no new tables or schema changes. Month and week grids only (no hour/time slots, since the app deliberately doesn't schedule *when in the day* something happens — only *which day*). Switching to calendar view hides the sidebar and expands the calendar to full width, with a floating course-color legend. Clicking a task in the calendar toggles done state, same as list view.
 - **Confetti on task completion:** A multi-burst `canvas-confetti` animation (dual corner cannons + center burst + two trailing waves) fires only when a task transitions from unchecked → checked, using the current month's course colors. Purely cosmetic — no state or sync implications.
-- **Theming:** 3 built-in themes (default/mint/lavender), each its own accent color, switchable via a dropdown in the header. Themes are plain CSS variables scoped under `[data-theme="..."]` blocks in `style.css`, with `theme.js` handling the switch, localStorage caching (avoids a flash of the wrong theme on load — applied via an inline script in `<head>`, before first paint), and Supabase sync so the choice follows a user across devices. Structural tokens (radius, fonts) live once on `:root`; only color tokens are per-theme — adding a future theme (e.g. dark mode) is just a new `[data-theme="..."]` block plus a new `<option>` in the dropdown, no JS changes needed. The calendar view's colors are wired to the same CSS variables (via FullCalendar's `--fc-*` custom properties), so it re-themes automatically too.
+- **Theming & dark mode (v2):** Two independent attributes on `<html>`: `data-theme` picks the accent (Purple, Teal, Blue, Rose, Orange — all Material 3 palettes) and `data-mode` picks the surfaces (`light` / `dark`). A theme block only defines `--primary` and `--on-primary` (a light and a dark variant each); surfaces, borders, and tints are derived from the accent with `color-mix()`, the way M3 builds tonal surfaces. Mode is a three-way preference (Auto / Light / Dark, key `vihaan_tracker_mode`). `<html data-mode>` always holds the resolved light/dark value, so the CSS never deals with "system". In Auto, `theme.js` listens to `prefers-color-scheme` and follows the OS live. Both preferences are cached in localStorage, applied by an inline `<head>` script before first paint (no flash), and synced to Supabase so they follow a user across devices. The calendar view re-themes for free through FullCalendar's `--fc-*` custom properties.
 - **Responsive layout:** Below ~1000px width, the setup panel/stats and the week list stack in a single column. At ≥1000px, once a plan has been generated, the layout switches to a sticky sidebar (setup + stats) alongside a scrolling main column (the week list) so wide screens are put to use. Before a plan exists (first-time setup), the layout instead centers the setup panel as a focused ~640px-wide card rather than spreading it thin across the full page width. In calendar view, the sidebar hides entirely and the calendar takes the full width instead.
 - **Dev/prod split:** `supabase-client.js` has `const ENV = 'dev'` or `'prod'` — flip one line to switch. Dev data is isolated, safe for testing. **Always double-check this is `'prod'` before committing/pushing** — this has bitten the project before.
 - **RLS (Row Level Security):** Every table has Supabase policies so users can only see/edit their own data — enforced at DB level, not UI.
@@ -61,7 +63,7 @@ tracker-app/
 │   ├── supabase-client.js     # Supabase connection + dev/prod toggle
 │   ├── auth.js                # Login/signup screen + session mgmt
 │   ├── sync.js                # Supabase read/write + Storage file ops
-│   ├── theme.js               # Theme switching, localStorage cache, Supabase sync
+│   ├── theme.js               # Theme + light/dark/auto mode switching localStorage cache, Supabase sync
 │   ├── tracker.js             # Rendering, month-filtered state mgmt, UI interactions, confetti
 │   ├── calendar.js            # Calendar view (month/week), drag-to-reassign, floating legend, tooltips
 │   ├── parser.js              # SheetJS + chunked full-year Groq parsing with retry/backoff
@@ -88,6 +90,8 @@ tracker-app/
 
 **Theming via CSS variables:** Keeping all color tokens as CSS variables from the start (rather than hardcoded hex values scattered through the stylesheet) made adding a theme switcher trivial later — just wrap the variable block in `[data-theme="..."]` selectors instead of touching every rule that uses color. This paid off again for the calendar view, which themes correctly for free via FullCalendar's own CSS-variable API.
 
+**No hardcoded colors:** Dark mode only worked cleanly after replacing every hardcoded `#fff` and `rgba(...)` in `style.css` (and the checkmark SVG's `stroke="white"`) with tokens like `--on-primary` and `color-mix()`. Do this before adding a mode, not during. Also, `localStorage` values pulled from Supabase are JSON-encoded, so anything reading them directly (like the head script) must strip the quotes.
+
 **Week-label date parsing:** Week date labels look like `"Week 1 · August 31 - September 4"`. A naive regex matching "word + number" grabs "Week 1" instead of the actual date. The calendar's day-assignment fallback scans for a known month name first, then reads the number after it, so it's independent of whatever prefix text precedes the date.
 
 **FullCalendar sizing gotcha:** Setting `height: 'parent'` on the calendar while its container only has `min-height` (not a real `height`) collapses the grid to zero, since percentage heights can't resolve against `min-height`. Use `height: 'auto'` instead and let the container's own `min-height` handle month vs. week view sizing via per-view CSS overrides.
@@ -104,7 +108,7 @@ tracker-app/
 - **Switch to dev:** Change `const ENV = 'dev'` in `supabase-client.js`, commit, push. GitHub Pages auto-deploys.
 - **Groq rate limit hit during a generate:** Handled automatically now via retry/backoff — no manual action needed unless it's persistently failing, in which case check Groq's dashboard for account-level throttling.
 - **Reset a user's data:** Table Editor → user_data → delete rows where `user_id` matches theirs (get UUID from Supabase Auth tab).
-- **Add a new theme:** Add a `[data-theme="yourname"]` block in `style.css` with the same variable names as the existing themes, then add a matching `<option value="yourname">` to `#themeSelect` in `index.html`. No JS changes needed — `theme.js` reads theme names generically.
+- **Add a new theme:** In `style.css`, add a light line (`[data-theme="yourname"] { --primary: …; --on-primary: …; }`) and a dark line (`[data-theme="yourname"][data-mode="dark"] { … }`), using the M3 primary / on-primary pair for each. Then add the name to `VALID_THEMES` in `theme.js` and a matching `<option>` to `#themeSelect` in `index.html`.
 
 
 ## Future Roadmap (Beyond v2)
@@ -112,8 +116,6 @@ tracker-app/
 - Day-view calendar (currently month + week only).
 - Adaptive rescheduling: detect overdue tasks, intelligently push remaining work to future weeks.
 - Configurable course end dates ("move Bio from May to Jan").
-- Manual-only plans: generate default school-year weeks so a user with no pace plan can use manual courses alone.
-- Dark mode (structure is already in place — see "Add a new theme" above).
 - Mascot.
 - Full UI for admins to manage announcements/users (not yet built; Table Editor is current admin panel).
 
